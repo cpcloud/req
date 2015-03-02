@@ -14,9 +14,6 @@ In [2]: def f(a, b):
    ...:     return a + b
    ...:
 
-In [3]: trans
-transform  translate
-
 In [3]: translate(f)
 Out[3]: 'f: {[a; b] (a) + (b)}'
 ```

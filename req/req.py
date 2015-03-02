@@ -113,6 +113,7 @@ class NodeVisitor(ast.NodeVisitor):
         return '$[%s; %s; %s]' % (self.visit(node.test),
                                   '; '.join(map(str, map(self.visit, node.body))),
                                   '; '.join(map(str, map(self.visit, node.orelse))))
+
     def visit_Compare(self, node):
         ops = node.ops
         comps = node.comparators

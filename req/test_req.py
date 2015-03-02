@@ -1,5 +1,6 @@
 from req import translate
 
+
 def f(a, b, c):
     return a + b * c - 1
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import ast
 import inspect
 
@@ -99,7 +101,7 @@ class NodeVisitor(ast.NodeVisitor):
                         '; '.join(map(str, map(self.visit, node.body))))
 
     def visit_Module(self, node):
-        return ';\n'.join(map(str, map(self.visit, node.body)))
+        return ';\n'.join(map(str, map(self.visit, node.body))) + '\n'
 
     def visit_arg(self, node):
         return node.arg
@@ -121,20 +123,24 @@ class NodeVisitor(ast.NodeVisitor):
                                  self.visit(comps[0]))
 
 
-def translate(f):
-    source = inspect.getsource(f)
+def translate(source):
     parse = ast.parse(source)
     v = NodeVisitor()
     return v.visit(parse)
 
 
-def f(a, b, c):
-    return a + b * c - 1
+def translate_function(f):
+    source = inspect.getsource(f)
+    return translate(source)
 
 
 if __name__ == '__main__':
-    q = translate(f)
-    print(q)
-
-    import reqtest
-    print(translate(reqtest))
+    import sys
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                   default=sys.stdin)
+    p.add_argument('outfile', nargs='?', type=argparse.FileType('w'),
+                   default=sys.stdout)
+    args = p.parse_args()
+    args.outfile.write(translate(args.infile.read()))

@@ -25,8 +25,7 @@ def h(c, d):
 
 
 def test_assign():
-    q = translate(h)
-    assert q == 'h: {[c; d] x: (c) + (1); (x) + (2)}'
+    assert translate(h) == 'h: {[c; d] x: (c) + (1); (x) + (2)}'
 
 
 def k(x):
@@ -37,8 +36,7 @@ def k(x):
 
 
 def test_if():
-    q = translate(k)
-    assert q == 'k: {[x] $[(x) = (1); (x) + (1); (x) * (2)]}'
+    assert translate(k) == 'k: {[x] $[(x) = (1); (x) + (1); (x) * (2)]}'
 
 
 def mapper(x):  # -> f each x
@@ -46,5 +44,48 @@ def mapper(x):  # -> f each x
 
 
 def test_call():
-    q = translate(mapper)
-    assert q == 'mapper: {[x] each[f; x]}'
+    assert translate(mapper) == 'mapper: {[x] each[f; x]}'
+
+
+def powfunc(x):
+    return x ** 2 + 1
+
+
+def test_pow():
+    assert translate(powfunc) == 'powfunc: {[x] ((x) xpow (2)) + (1)}'
+
+
+def mylooper(n):
+    s = 0.0
+    for i in range(n):
+        s = s + 1
+    return s
+
+
+def test_for():
+    r = translate(mylooper)
+    assert r == 'mylooper: {[n] s: 0.0; {[i] s: (s) + (1)} each til[n]; s}'
+
+
+def mywhile(n):
+    s = 0.0
+    i = 0
+    while i < n:
+        s = s + i
+        i = i + 1
+    return s
+
+
+def test_while():
+    r = translate(mywhile)
+    assert r == 'mywhile: {[n] s: 0.0; i: 0; while[(i) < (n); s: (s) + (i); i: (i) + (1)]; s}'
+
+
+def test_dict():
+    x = {'a': 1, 'b': 2}
+    assert translate(x) == '("a"; "b")!(1; 2)'
+
+
+def test_list():
+    x = [1, 'a', 2, []]
+    assert translate(x) == '(1; "a"; 2; ())'

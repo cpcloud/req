@@ -34,7 +34,7 @@ class Sub(BinOp):
 
 
 class Div(BinOp):
-    op = '/'
+    op = '%'
 
 
 class FloorDiv(BinOp):
@@ -42,7 +42,7 @@ class FloorDiv(BinOp):
 
 
 class Pow(BinOp):
-    op = 'xpow'
+    op = 'xexp'
 
 
 ops = {
@@ -100,6 +100,10 @@ class NodeVisitor(ast.NodeVisitor):
     def visit_Str(self, node):
         return '"%s"' % node.s
 
+    def visit_Lambda(self, node):
+        return '{[%s] %s}' % ('; '.join(map(self.visit, node.args.args)),
+                              self.visit(node.body))
+
     def visit_FunctionDef(self, node):
         return '%s: {[%s] %s}' % (node.name,
                                   '; '.join(map(self.visit, node.args.args)),
@@ -109,10 +113,12 @@ class NodeVisitor(ast.NodeVisitor):
         return node.arg
 
     def visit_Module(self, node):
-        return qify(self.visit, node.body, char='\n')
+        return qify(self.visit, node.body, char='\n') + '\n'
 
     def visit_Assign(self, node):
         assert len(node.targets) == 1, 'only a single assignment target allowed'
+        if isinstance(node.value, ast.Lambda):
+            return self.visit(node.value)
         return '%s: %s' % (self.visit(node.targets[0]), self.visit(node.value))
 
     def visit_If(self, node):
@@ -142,12 +148,17 @@ class NodeVisitor(ast.NodeVisitor):
                                   qify(self.visit, node.body))
 
     def visit_alias(self, node):
-        if node.asname is None:
-            return node.name
-        raise ValueError('Cannot rewrite aliased imports')
+        return node.name
+
+    def visit_Attribute(self, node):
+        return '%s.%s' % (node.value, node.attr)
 
     def visit_ImportFrom(self, node):
-        return r'\l .%s' % '.'.join([node.module] + list(map(self.visit, node.names)))
+        names = [ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())],
+                            value=ast.Attribute(value='.%s' % node.module,
+                                                attr=name, ctx=ast.Load()))
+                 for name in map(self.visit, node.names)]
+        return (r'\l %s.q' % node.module) + '\n' + self.visit(ast.Module(body=names))
 
     def visit_Assert(self, node):
         return 'if[not[%s]; \'`%s]' % (self.visit(node.test), node.msg or '')
@@ -162,6 +173,11 @@ class NodeVisitor(ast.NodeVisitor):
     def visit_Expr(self, node):
         return self.visit(node.value)
 
+    def visit_AugAssign(self, node):
+        return '%s %s: (%s)' % (self.visit(node.target),
+                                ops[type(node.op)].op,
+                                self.visit(node.value))
+
 
 def qify(f, nodes, char='; '):
     return char.join(map(str, map(f, nodes)))
@@ -173,7 +189,7 @@ def translate(source):
     elif isinstance(source, (dict, list)):
         return NodeVisitor().visit(ast.parse(repr(source)))
     elif isinstance(source, types.FunctionType):
-        return translate(inspect.getsource(source))
+        return translate(inspect.getsource(source).strip())
     else:
         raise TypeError('Cannot parse object of type %r' %
                         type(source).__name__)
